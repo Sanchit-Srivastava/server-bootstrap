@@ -1,0 +1,29 @@
+# Local identity and overrides
+*.local
+.env
+.env.*
+!.env.example
+
+# Secrets and private keys
+*.key
+*.pem
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+secrets/*.dec
+secrets/*.plain
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.bak
+*.orig
+*.tmp
+*.temp

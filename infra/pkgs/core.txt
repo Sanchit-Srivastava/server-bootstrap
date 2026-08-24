@@ -1,0 +1,34 @@
+# server-bootstrap core — focused Debian 13 command-line environment.
+# One native package per line; keep groups alphabetized.
+
+# Bootstrap and shell
+bash-completion
+ca-certificates
+curl
+git
+just
+less
+man-db
+openssh-client
+rsync
+tmux
+unzip
+zsh
+
+# Editor and modern CLI
+bat
+btop
+eza
+fastfetch
+fd-find
+fzf
+git-delta
+jq
+lazygit
+neovim
+ripgrep
+zoxide
+
+# Static development checks
+shellcheck
+shfmt

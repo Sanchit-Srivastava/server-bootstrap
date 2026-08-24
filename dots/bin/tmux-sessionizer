@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SESSIONIZER_DIRS="${SESSIONIZER_DIRS:-$HOME/Projects:$HOME/services}"
+
+list_candidate_dirs() {
+	local scan_root
+	local -a scan_roots
+
+	{
+		if command -v zoxide >/dev/null 2>&1; then
+			zoxide query --list
+		fi
+
+		IFS=: read -r -a scan_roots <<<"$SESSIONIZER_DIRS"
+		for scan_root in "${scan_roots[@]}"; do
+			[[ -d "$scan_root" ]] || continue
+			find "$scan_root" -name .git -prune -exec dirname {} \; 2>/dev/null
+		done
+	} | awk 'NF && !seen[$0]++'
+}
+
+if [[ "${1:-}" == "--list" ]]; then
+	list_candidate_dirs
+	exit 0
+fi
+
+if [[ -n "${1:-}" ]]; then
+	selected="$1"
+else
+	selected="$(list_candidate_dirs | fzf --prompt='session: ' --height=40% --layout=reverse --border)" || exit 0
+fi
+
+[[ -n "${selected:-}" ]] || exit 0
+[[ -d "$selected" ]] || {
+	printf '%s\n' "tmux-sessionizer: not a directory: $selected" >&2
+	exit 1
+}
+
+session_name="$(basename "$selected" | tr '.' '_')"
+if ! tmux has-session -t="$session_name" 2>/dev/null; then
+	tmux new-session -ds "$session_name" -c "$selected"
+fi
+
+if [[ -n "${TMUX:-}" ]]; then
+	tmux switch-client -t "$session_name"
+else
+	tmux attach-session -t "$session_name"
+fi

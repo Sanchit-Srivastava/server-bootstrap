@@ -1,0 +1,52 @@
+# Public, machine-independent Git configuration.
+# Name, email, credentials, and signing configuration belong in
+# ~/.gitconfig.local, which is created locally and never committed.
+
+[include]
+    path = ~/.gitconfig.local
+
+[init]
+    defaultBranch = main
+
+[push]
+    default = current
+    autoSetupRemote = true
+
+[pull]
+    rebase = true
+
+[core]
+    editor = nvim
+    autocrlf = input
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    side-by-side = true
+    line-numbers = true
+
+[color]
+    ui = true
+
+[diff]
+    algorithm = histogram
+    colorMoved = default
+
+[merge]
+    conflictstyle = zdiff3
+
+[rebase]
+    autoStash = true
+    autoSquash = true
+
+[alias]
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    lg = log --oneline --graph --decorate --all
+    unstage = reset HEAD --
+    last = log -1 HEAD
