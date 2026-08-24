@@ -1,33 +1,39 @@
 # server-bootstrap
 
-server-bootstrap installs a small, familiar command-line environment on an
-already working Debian 13 server. It is personal configuration, not a generic
-server installer or an application deployment system.
+server-bootstrap configures a Debian 13 server with a focused command-line
+toolset and shared user dotfiles. Application deployment remains separate, so
+the resulting system is ready for service-specific repositories and Compose
+projects.
 
-The repository is intentionally public so a new machine can clone it without
-credentials. It contains no secrets or host-specific information. The SSH keys
-under `keys/` are public keys; private keys never belong in this repository.
+## What it installs
 
-## Ownership boundary
+- zsh with Oh My Zsh and interactive plugins;
+- tmux, Neovim, Git, lazygit, and familiar command-line utilities;
+- shared aliases, editor settings, and the tmux sessionizer;
+- compatibility commands for Debian's `batcat` and `fdfind` executables; and
+- an optional command for installing the public SSH keys in `keys/`.
 
-Debian owns boot, filesystems, storage, networking, SSH server configuration,
-firewalling, updates, hardware, and the base operating system. Separate
-application repositories own Docker, Compose deployments, services, data,
-backups, upgrades, monitoring, and reverse proxies.
+The Debian installation continues to manage boot, storage, networking, SSH,
+firewalling, system updates, and hardware. This repository does not install
+Docker or deploy applications.
 
-server-bootstrap owns only native CLI packages, user dotfiles, the login shell,
-and explicitly requested SSH public-key authorization.
-
-## Debian installation
+## Install Debian
 
 Install Debian 13 from the official `netinst` image. At the software selection
-screen, select **SSH server** and **standard system utilities**, and deselect all
-desktop environments. Create a regular administrative user with sudo access.
+screen:
 
-## Installation
+1. select **SSH server**;
+2. select **standard system utilities**; and
+3. deselect **Debian desktop environment** and all desktop options.
 
-On a fresh machine, install the two bootstrap prerequisites and clone over
-HTTPS:
+Create a regular administrative user with sudo access. After installation, log
+in as that user from the local console or through the initial SSH access method
+configured during installation.
+
+## Install the command-line environment
+
+Install the bootstrap prerequisites, clone the repository over HTTPS, and run
+the installer:
 
 ```bash
 sudo apt-get update
@@ -37,22 +43,80 @@ cd ~/server-bootstrap
 ./install.sh
 ```
 
-The pasteable entry point performs the same clone and installation:
+Alternatively, use the pasteable entry point:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/Sanchit-Srivastava/server-bootstrap/main/remote-install.sh)
 ```
 
-For reproducibility, use a known tag:
+A release tag can be selected with `--ref`:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/Sanchit-Srivastava/server-bootstrap/main/remote-install.sh) --ref vYYYY.MM.DD
 ```
 
-The installer updates APT package metadata but does not upgrade the operating
-system. It installs the package list, applies dotfiles, creates Debian command
-compatibility links for `bat` and `fd`, and changes the current user's login
-shell to zsh.
+The installer refreshes APT package metadata, installs the packages in
+`infra/pkgs/core.txt`, applies the dotfiles, and changes the current user's
+login shell to zsh. Log out and back in after the first installation.
+
+## Configure SSH access
+
+The repository contains the authorized public keys in [`keys/`](keys/). To add
+all `*.pub` files there to the current user's `~/.ssh/authorized_keys`, run on
+the server:
+
+```bash
+cd ~/server-bootstrap
+just authorize-keys
+```
+
+The command validates each public key, creates `~/.ssh` with mode `0700`,
+creates `authorized_keys` with mode `0600`, and skips keys that are already
+present. It configures access for the user running the command; run it while
+logged in as the account that should receive SSH access.
+
+Then open a new terminal on the client machine and test the connection:
+
+```bash
+ssh <username>@<server-address>
+```
+
+Keep the console or existing SSH session open until the new key-based session
+has succeeded.
+
+### Add another public key
+
+Place one complete OpenSSH public-key line in a new file ending in `.pub`:
+
+```text
+keys/<key-name>.pub
+```
+
+For example, from a workstation clone of this repository:
+
+```bash
+cp ~/.ssh/id_ed25519.pub keys/<key-name>.pub
+ssh-keygen -l -f keys/<key-name>.pub
+```
+
+Commit and push the public-key file, pull the repository on the server, and run
+`just authorize-keys` again. OpenSSH public keys may be published; private-key
+files must remain on the client machine.
+
+### Add a key manually
+
+Without using the repository script, prepare the authorization file on the
+server:
+
+```bash
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+${EDITOR:-vi} ~/.ssh/authorized_keys
+```
+
+Paste the complete public-key line into `authorized_keys`, save it, and test a
+new SSH connection.
 
 ## Commands
 
@@ -60,34 +124,32 @@ shell to zsh.
 just install          # packages, dotfiles, compatibility links, and zsh
 just core             # reapply the native package baseline
 just dotfiles         # reapply user dotfiles
-just authorize-keys   # explicitly authorize the committed public SSH keys
+just authorize-keys   # add keys/*.pub to ~/.ssh/authorized_keys
 just sync             # fast-forward pull, then reapply core and dotfiles
-just check            # static checks for development
+just check            # run static development checks
 ```
 
-`just authorize-keys` modifies `~/.ssh/authorized_keys`. It is deliberately not
-part of `just install`: review the keys first, run it from a local console or an
-already authenticated session, and confirm a second SSH login before removing
-any existing access method.
+## Configure Git identity
 
-Git identity is machine-local and is never committed here. Configure it after
-installation:
+The shared Git configuration loads identity settings from
+`~/.gitconfig.local`. Configure them on each machine:
 
 ```bash
 git config --file ~/.gitconfig.local user.name "Your Name"
 git config --file ~/.gitconfig.local user.email "you@example.com"
 ```
 
-## Secrets
+## Public repository contents
 
-No secret handling is currently required. If that changes, this repository will
-use the same SOPS + age design and age recipient as Archway. Only SOPS-encrypted
-documents and the public age recipient may be committed; the age private key and
-all decrypted output must remain outside the repository.
+Configuration and OpenSSH public keys may be committed. Private keys,
+passwords, access tokens, decrypted secrets, private addresses, and
+host-specific inventory must not be committed. `just audit-public` checks the
+working tree for common private-key and token formats.
 
 ## Development
 
-Do not execute installer scripts on a development machine. Safe static checks:
+Installer commands target a Debian 13 server. Development checks do not install
+packages or modify the local user account:
 
 ```bash
 just lint

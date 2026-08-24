@@ -1,7 +1,7 @@
 # AGENTS.md — server-bootstrap coding-agent instructions
 
 server-bootstrap is a public, Debian 13-only repository for installing a small,
-familiar command-line environment on personal servers.
+familiar command-line environment on servers.
 
 ## Safety
 
@@ -34,7 +34,7 @@ server-bootstrap owns only:
 - a focused list of Debian command-line packages;
 - user dotfiles and small compatibility links;
 - the user's login shell; and
-- explicitly requested incoming SSH public-key authorization.
+- incoming SSH public-key authorization through the dedicated command.
 
 Do not add Docker, service deployment, firewall rules, system hardening,
 storage configuration, secrets, or host-specific configuration here.
@@ -45,9 +45,8 @@ Never commit private keys, passwords, tokens, decrypted secrets, private
 addresses, internal hostnames, personal inventory, or generated runtime data.
 OpenSSH public keys and age recipients are public material and may be committed.
 
-There are currently no secrets in this repository. If one becomes necessary,
-use SOPS with age, reuse Archway's age recipient, commit only the encrypted
-document, and keep the age private key outside the repository.
+Secret files must use SOPS with age and Archway's age recipient. Commit only
+encrypted documents and keep the age private key outside the repository.
 
 ## Shell conventions
 
