@@ -41,5 +41,9 @@ check-fmt:
 audit-public:
     ./infra/public-audit.sh
 
+# Isolated regression fixtures: no installer entrypoints or live account writes.
+test:
+    python3 -B -m unittest discover -s tests -v
+
 # Safe development validation.
-check: lint check-fmt audit-public
+check: lint check-fmt audit-public test

@@ -1,6 +1,8 @@
 # ~/.zshrc — managed by server-bootstrap
 
 export ZSH="${HOME}/.oh-my-zsh"
+# Dependency updates are deliberate operator actions, not login side effects.
+zstyle ':omz:update' mode disabled
 if [[ -f "${ZSH}/oh-my-zsh.sh" ]]; then
     plugins=(
         git
