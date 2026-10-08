@@ -37,13 +37,22 @@ fi
 	exit 1
 }
 
-session_name="$(basename "$selected" | tr '.' '_')"
-if ! tmux has-session -t="$session_name" 2>/dev/null; then
+# Canonical paths give symlink/relative aliases one identity, and distinguish
+# projects with the same basename. Never reuse a session for a different path.
+selected="$(cd -- "$selected" && pwd -P)"
+path_hash="$(printf '%s' "$selected" | sha256sum)"
+readable_name="$(printf '%s' "${selected##*/}" | LC_ALL=C tr -c 'a-zA-Z0-9_-' '_')"
+session_name="${readable_name:0:40}-${path_hash:0:16}"
+if ! tmux has-session -t "=$session_name" 2>/dev/null; then
 	tmux new-session -ds "$session_name" -c "$selected"
+	tmux set-option -t "=$session_name:" @sessionizer-path "$selected"
+elif [[ "$(tmux show-options -t "=$session_name:" -qv @sessionizer-path)" != "$selected" ]]; then
+	printf '%s\n' "tmux-sessionizer: session path conflict: $session_name" >&2
+	exit 1
 fi
 
 if [[ -n "${TMUX:-}" ]]; then
-	tmux switch-client -t "$session_name"
+	tmux switch-client -t "=$session_name"
 else
-	tmux attach-session -t "$session_name"
+	tmux attach-session -t "=$session_name"
 fi

@@ -1,4 +1,6 @@
+# Debian 13 ships lazygit 0.50: use its paging configuration.
 git:
-  diffRenderers:
-    - command: delta --dark --paging=never --line-numbers
-      colorArg: always
+  paging:
+    colorArg: always
+    pager: delta --dark --paging=never --line-numbers
+    useConfig: false

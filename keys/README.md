@@ -9,7 +9,12 @@ just authorize-keys
 ```
 
 The keys are added to `~/.ssh/authorized_keys` without duplicating entries that
-are already present.
+are already present, including entries with restrictions or quoted options.
+Existing authorization policy is preserved; this command does not remove or
+weaken restrictions. All incoming files are validated before any writes. The
+file is replaced only after the complete update has been staged. Avoid concurrent
+edits/runs, and review the key list before authorizing it: newly added keys are
+unrestricted.
 
 ## Add a key
 
@@ -21,9 +26,11 @@ cp ~/.ssh/id_ed25519.pub keys/<key-name>.pub
 ssh-keygen -l -f keys/<key-name>.pub
 ```
 
-The file must contain the complete public-key line, including the key type and
-encoded key data. Commit the `.pub` file, pull the repository on the server,
-and run `just authorize-keys` again.
+The file must contain exactly one complete plain public-key line, including
+the key type and encoded key data, without `authorized_keys` options. Commit the
+`.pub` file, pull the repository on the server, and run `just authorize-keys`
+again. Apply any new per-key restrictions manually in `authorized_keys` instead
+of placing them in an incoming `.pub` file.
 
 OpenSSH public keys are not secret. Do not place private keys, FIDO key handles,
 certificates containing private keys, tokens, or decrypted secrets in this

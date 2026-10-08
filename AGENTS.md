@@ -15,11 +15,16 @@ Safe development commands are:
 just lint
 just check-fmt
 just audit-public
+just test
 just check
 ```
 
-Validate target behavior statically. Do not install packages, change login
-shells, or modify SSH authorization while testing repository changes.
+Validate installer entrypoints statically; never invoke them during development.
+`just test` sources function definitions and exercises them only against temporary
+fixtures. It uses private HOME/XDG directories, local Git repositories and a
+private tmux socket, blocks package/account commands, and never invokes an
+installer. Fixtures respect `TMPDIR` and are cleaned up. Do not install packages,
+change login shells, or modify real SSH authorization while testing changes.
 
 ## Scope
 

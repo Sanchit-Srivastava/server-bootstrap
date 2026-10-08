@@ -44,7 +44,7 @@ clone_if_missing() {
 	local target="$2"
 
 	if [[ -d "${target}/.git" ]]; then
-		log_info "Already cloned: $target"
+		log_info "Keeping existing dependency checkout (updates are manual): $target"
 		return 0
 	fi
 	if [[ -e "$target" ]]; then
@@ -89,21 +89,16 @@ ensure_local_git_config() {
 	fi
 }
 
-main() {
-	[[ $EUID -ne 0 ]] || die "Run as a regular user, not root."
-	[[ -d "$DOTFILES_DIR" ]] || die "Dotfiles directory not found: $DOTFILES_DIR"
-	command -v git >/dev/null 2>&1 || die "git is required; run ./install.sh core first."
-
-	install_zsh_framework
-	install_compatibility_links
-
+link_user_dotfiles() {
+	local config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
+	[[ "$config_home" == /* ]] || die "XDG_CONFIG_HOME must be an absolute path."
 	link_dotfile "${DOTFILES_DIR}/zsh/.zshrc" "${HOME}/.zshrc"
 	link_dotfile "${DOTFILES_DIR}/zsh/.zshenv" "${HOME}/.zshenv"
-	link_dotfile "${DOTFILES_DIR}/tmux/tmux.conf" "${HOME}/.config/tmux/tmux.conf"
-	link_dotfile "${DOTFILES_DIR}/nvim" "${HOME}/.config/nvim"
+	link_dotfile "${DOTFILES_DIR}/tmux/tmux.conf" "${config_home}/tmux/tmux.conf"
+	link_dotfile "${DOTFILES_DIR}/nvim" "${config_home}/nvim"
 	link_dotfile "${DOTFILES_DIR}/git/.gitconfig" "${HOME}/.gitconfig"
-	link_dotfile "${DOTFILES_DIR}/lazygit/config.yml" "${HOME}/.config/lazygit/config.yml"
-	link_dotfile "${DOTFILES_DIR}/bat/config" "${HOME}/.config/bat/config"
+	link_dotfile "${DOTFILES_DIR}/lazygit/config.yml" "${config_home}/lazygit/config.yml"
+	link_dotfile "${DOTFILES_DIR}/bat/config" "${config_home}/bat/config"
 
 	mkdir -p "${HOME}/bin"
 	local script
@@ -113,7 +108,20 @@ main() {
 	done
 
 	ensure_local_git_config
+}
+
+main() {
+	[[ $EUID -ne 0 ]] || die "Run as a regular user, not root."
+	[[ -d "$DOTFILES_DIR" ]] || die "Dotfiles directory not found: $DOTFILES_DIR"
+	[[ "${XDG_CONFIG_HOME:-$HOME/.config}" == /* ]] || die "XDG_CONFIG_HOME must be an absolute path."
+	command -v git >/dev/null 2>&1 || die "git is required; run ./install.sh core first."
+
+	install_zsh_framework
+	install_compatibility_links
+	link_user_dotfiles
 	log_info "User dotfiles are installed. Start a new login shell to use them."
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+	main "$@"
+fi

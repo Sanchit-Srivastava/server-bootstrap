@@ -8,6 +8,8 @@ REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 . "${SCRIPT_DIR}/lib/common.sh"
 
 cd "$REPOSITORY_ROOT"
+command -v rg >/dev/null 2>&1 || die "ripgrep (rg) is required for the public audit."
+command -v find >/dev/null 2>&1 || die "find is required for the public audit."
 
 failed=0
 private_key_pattern='BEGIN (OPENSSH|RSA|DSA|EC|PGP)'" PRIVATE KEY"
@@ -17,9 +19,16 @@ token_pattern='(github_pat_|ghp_|gho_|ghu_|ghs_|AKIA)[A-Za-z0-9_]+'
 scan_pattern() {
 	local description="$1"
 	local pattern="$2"
-	local matches
-	matches="$(rg -l --hidden --glob '!.git/**' --glob '!infra/public-audit.sh' \
-		-e "$pattern" . || true)"
+	local matches status
+	# Ignore user rg configuration and Git ignore rules. Never print matched
+	# content, including on scanner errors; status 1 alone means no matches.
+	if matches="$(rg --no-config -l --hidden --no-ignore --text \
+		--glob '!.git/**' --glob '!infra/public-audit.sh' -e "$pattern" . 2>/dev/null)"; then
+		status=0
+	else
+		status=$?
+	fi
+	[[ "$status" -le 1 ]] || die "Public audit scanner failed (exit $status); no clean result is available."
 	if [[ -n "$matches" ]]; then
 		log_error "$description detected in:"
 		printf '%s\n' "$matches" >&2
