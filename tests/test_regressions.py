@@ -462,6 +462,65 @@ class DotfileTests(Fixture):
         self.assertNotIn("diffRenderers", "\n".join(lines))
 
 
+class TerminalTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.zsh = shutil.which("zsh")
+        self.assertIsNotNone(self.zsh, "zsh is required for terminal startup tests")
+        framework = self.home / ".oh-my-zsh"
+        framework.mkdir()
+        # Observe capabilities at the exact point real plugins would load.
+        (framework / "oh-my-zsh.sh").write_text(
+            'zmodload zsh/terminfo\n'
+            'print -r -- "plugin-term=$TERM"\n'
+            'print -r -- "plugin-up=${terminfo[cuu1]}"\n'
+        )
+        (self.home / ".zshrc.local").write_text(":\n")
+        for name in ("fzf", "zoxide", "fastfetch"):
+            self.script(self.bin / name, "exit 0\n")
+
+    def shell(self, term, interactive=True):
+        # Relocated development binaries may need their extracted module tree.
+        code = ('[[ -z ${TEST_ZSH_MODULE_PATH:-} ]] || '
+                'module_path=("$TEST_ZSH_MODULE_PATH" $module_path); '
+                'source "$1"; print -r -- "final-term=${TERM-unset}"')
+        env = {**self.env, "TERM": term}
+        if term is None:
+            env.pop("TERM")
+        return self.run_cmd([self.zsh, "-dfic" if interactive else "-dfc", code,
+                             "fixture", REPO / "dots/zsh/.zshrc"], env=env)
+
+    def test_unknown_xterm_recovers_cursor_motion_before_plugins(self):
+        result = self.shell("xterm-server-bootstrap-missing-fixture")
+        self.assertIn("plugin-term=xterm-256color\n", result.stdout)
+        self.assertIn("plugin-up=\x1b[A\n", result.stdout)
+        self.assertEqual(result.stderr, "")
+
+    def test_known_and_non_xterm_types_are_preserved(self):
+        for term in ("xterm-256color", "tmux-256color", "screen-256color", "dumb",
+                     "vt100", "unknown-fixture", "", None):
+            with self.subTest(term=term):
+                self.assertIn("final-term=" + ("unset" if term is None else term) + "\n",
+                              self.shell(term).stdout)
+
+    def test_installed_ghostty_entry_is_preserved(self):
+        # A private terminfo entry models a server with Ghostty support installed.
+        source = self.root / "ghostty.terminfo"
+        source.write_text("xterm-ghostty|fixture terminal, use=xterm-256color,\n")
+        database = self.root / "terminfo"
+        self.run_cmd(["tic", "-x", "-o", database, source])
+        self.env["TERMINFO"] = str(database)
+        self.assertIn("plugin-term=xterm-ghostty\n", self.shell("xterm-ghostty").stdout)
+
+    def test_unavailable_fallback_does_not_change_term(self):
+        self.script(self.bin / "infocmp", "exit 1\n")
+        self.assertIn("plugin-term=xterm-missing\n", self.shell("xterm-missing").stdout)
+
+    def test_noninteractive_shell_keeps_term(self):
+        self.assertIn("final-term=xterm-missing\n",
+                      self.shell("xterm-missing", interactive=False).stdout)
+
+
 class SessionizerTests(Fixture):
     def setUp(self):
         super().setUp()
