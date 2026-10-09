@@ -1,5 +1,16 @@
 # ~/.zshrc — managed by server-bootstrap
 
+# SSH forwards TERM, not the client's terminfo database. Unknown xterm variants
+# (e.g. xterm-ghostty) leave ZLE without cursor-motion capabilities and break
+# redraws, especially with highlighting/autosuggestions. Fix this before OMZ.
+# Keep known terminals, tmux/screen, dumb and noninteractive shells unchanged.
+if [[ -o interactive && "$TERM" == xterm-* ]] && command -v infocmp >/dev/null 2>&1; then
+    if ! infocmp -x -- "$TERM" >/dev/null 2>&1 &&
+        infocmp -x xterm-256color >/dev/null 2>&1; then
+        export TERM=xterm-256color
+    fi
+fi
+
 export ZSH="${HOME}/.oh-my-zsh"
 # Dependency updates are deliberate operator actions, not login side effects.
 zstyle ':omz:update' mode disabled

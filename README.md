@@ -211,6 +211,42 @@ needed. Interactive directory discovery is line-based and `SESSIONIZER_DIRS` is
 colon-separated, so use ordinary directory names without newlines or colons in
 that search list.
 
+### Terminal compatibility over SSH
+
+SSH forwards the client's `TERM` name, but not its terminfo database. If a
+server does not recognise `xterm-ghostty` (or another `xterm-*` variant), zsh
+can lose cursor-motion capabilities: typing, syntax highlighting and suggestions
+may leave duplicated or differently coloured characters behind. This is not a
+font problem.
+
+Before loading Oh My Zsh, interactive startup checks the terminal with `infocmp`.
+An unknown `xterm-*` falls back to `xterm-256color` only if that entry is available.
+Known terminals (including installed Ghostty entries), tmux/screen, `dumb`, and
+noninteractive shells are left unchanged. This intentionally does not guess
+compatibility for arbitrary unknown terminal families.
+
+For immediate recovery, connect **from your local terminal** with:
+
+```bash
+TERM=xterm-256color ssh YOUR-SERVER
+```
+
+To confirm the original problem on the server, run `printf '%s\n' "$TERM"` and
+`infocmp "$TERM"` before applying the fix. An unknown-terminal error confirms the
+missing entry. After updating this checkout with `git pull --ff-only`, open a
+fresh SSH login; the linked `.zshrc` needs no reinstall. Existing shells and tmux
+clients need a fresh login/reattach rather than repeatedly sourcing `.zshrc`.
+
+To retain Ghostty's full capabilities instead, copy its entry from a local
+machine where Ghostty's terminfo is installed:
+
+```bash
+infocmp -x xterm-ghostty | ssh YOUR-SERVER 'mkdir -p ~/.terminfo && tic -x -o ~/.terminfo -'
+```
+
+The next login will then keep `xterm-ghostty`. See
+[Ghostty's terminfo documentation](https://ghostty.org/docs/help/terminfo).
+
 ### Dependency update policy
 
 This is a versioned environment, not a bit-for-bit reproducible OS installation:
@@ -242,7 +278,8 @@ complete secret detector or a replacement for reviewing the diff.
 
 Installer commands target a Debian 13 server. Development checks do not install
 packages or modify the local user account. They require Python 3 (stdlib only),
-Bash, Git, OpenSSH's `ssh-keygen`, ripgrep, tmux, just, ShellCheck, shfmt, and the
+Bash, zsh, ncurses' `infocmp` and `tic`, Git, OpenSSH's `ssh-keygen`, ripgrep,
+tmux, just, ShellCheck, shfmt, and the
 usual POSIX/core utilities on PATH. Python is a development-test prerequisite,
 not an added server package.
 
