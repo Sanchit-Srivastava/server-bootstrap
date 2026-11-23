@@ -93,4 +93,4 @@ printf 'gh --version\\n' >> "$TEST_LOG"
     def test_bootstrap_installs_cli_after_download_prerequisites(self):
         script = (REPO / "infra/bootstrap.sh").read_text()
         self.assertIn('. "${SCRIPT_DIR}/lib/github-cli.sh"', script)
-        self.assertIn("\tinstall_packages\n\tinstall_github_cli\n\tset_login_shell", script)
+        self.assertIn("\tinstall_packages\n\tinstall_github_cli\n\tinstall_yazi\n\tset_login_shell", script)
