@@ -5,6 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 # shellcheck source=lib/common.sh
 . "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/github-cli.sh
+. "${SCRIPT_DIR}/lib/github-cli.sh"
+# shellcheck source=lib/yazi.sh
+. "${SCRIPT_DIR}/lib/yazi.sh"
 
 check_prerequisites() {
 	[[ $EUID -ne 0 ]] || die "Run as a regular user, not root."
@@ -69,6 +73,8 @@ set_login_shell() {
 main() {
 	check_prerequisites
 	install_packages
+	install_github_cli
+	install_yazi
 	set_login_shell
 	log_info "Debian command-line baseline is installed."
 }

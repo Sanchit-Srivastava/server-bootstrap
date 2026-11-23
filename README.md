@@ -8,8 +8,9 @@ projects.
 ## What it installs
 
 - zsh with Oh My Zsh and interactive plugins;
-- tmux, Neovim, Git, lazygit, and familiar command-line utilities;
+- tmux, Neovim, Git, GitHub CLI (`gh`), lazygit, and familiar command-line utilities;
 - shared aliases, editor settings, and the tmux sessionizer;
+- Yazi (`yazi` and `ya`), with `y` to leave your shell in the chosen directory;
 - compatibility commands for Debian's `batcat` and `fdfind` executables; and
 - an optional command for installing the public SSH keys in `keys/`.
 
@@ -102,8 +103,60 @@ branches can move upstream; only a commit ID fixes the code identity. An
 explicit commit must still be fetchable from the public remote.
 
 The installer refreshes APT package metadata, installs the packages in
-`infra/pkgs/core.txt`, applies the dotfiles, and changes the current user's
-login shell to zsh. Log out and back in after the first installation.
+`infra/pkgs/core.txt`, installs GitHub CLI from its official APT repository and
+Yazi from its official release package, applies the dotfiles, and changes the
+current user's login shell to zsh. Log out
+and back in after the first installation.
+
+### GitHub CLI
+
+`./install.sh`, `just core`, and `just sync` install `gh` using
+[GitHub's official Debian instructions](https://github.com/cli/cli/blob/trunk/docs/install_linux.md).
+The bootstrap downloads the public signing key into `/etc/apt/keyrings/` and
+writes `/etc/apt/sources.list.d/github-cli.list` with the machine's architecture
+and a repository-scoped `signed-by` key. Reruns refresh those same files rather
+than appending duplicate entries, then install or upgrade `gh` through APT.
+Subsequent normal APT upgrades also use that repository.
+
+Authentication is deliberately separate; the bootstrap neither prompts for nor
+stores GitHub credentials. When you need authenticated GitHub access, run as
+your regular user:
+
+```bash
+gh auth login
+```
+
+### Yazi and directory changes
+
+`./install.sh`, `just core`, and `just sync` install the official Yazi **26.9.1**
+Debian package for **amd64 or arm64**. The download's SHA-256 must match the
+architecture-specific checksum recorded in `infra/lib/yazi.sh` before APT is
+invoked. APT installs the package and its required `file` dependency; no Rust
+toolchain, third-party package repository, or desktop preview stack is added.
+Other architectures are not supported by this installation step.
+
+After opening a new zsh login, use:
+
+```bash
+y                 # browse from the current directory
+y ~/projects      # start in another directory
+```
+
+Navigate to a directory and press **q**: your shell stays in that directory.
+Press **Q** to quit without changing the shell's directory (Yazi's default
+bindings). Calling `yazi` directly also leaves the shell's directory unchanged.
+The `y` function is managed in `dots/zsh/.zshrc`, following the
+[upstream shell wrapper](https://yazi-rs.github.io/docs/quick-start/), with cleanup
+and exit-status handling on failure. Arguments are passed through unchanged.
+For an already-installed environment, pull the changes, run `just core`, then
+open a fresh login. Machine-specific overrides can remain in `~/.zshrc.local`.
+
+The release is deliberately pinned, not resolved from `latest` during installs.
+Updating it means reviewing a new [official release](https://github.com/sxyazi/yazi/releases)
+and changing the version and both checksums together. Reruns use the same
+package; no forced downgrade is enabled if you installed a newer version yourself.
+Optional media previews and clipboard tools are described in
+[Yazi's installation guide](https://yazi-rs.github.io/docs/installation/).
 
 ## Configure SSH access
 
@@ -252,6 +305,8 @@ The next login will then keep `xterm-ghostty`. See
 This is a versioned environment, not a bit-for-bit reproducible OS installation:
 
 - Debian packages follow the configured Debian 13 repositories at install time.
+- GitHub CLI follows GitHub's official stable APT repository at install time.
+- Yazi uses a checksum-verified, pinned upstream Debian release package (see above).
 - Oh My Zsh and its three external plugins are shallow-cloned from their current
   upstream default branches **once**. Existing checkouts are retained, including
   local edits; `just dotfiles` and `just sync` do not update them.

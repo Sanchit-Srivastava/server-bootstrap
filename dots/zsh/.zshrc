@@ -83,6 +83,20 @@ alias df='df -h'
 alias update='sudo apt-get update && sudo apt-get upgrade'
 alias server-bootstrap-sync='cd ~/server-bootstrap && just sync'
 
+# Upstream shell wrapper: https://yazi-rs.github.io/docs/quick-start/
+# A function (not an executable) is needed to change this shell's directory.
+function y() {
+    local tmp cwd='' result=0
+    tmp="$(mktemp -t 'yazi-cwd.XXXXXX')" || return
+    command yazi "$@" --cwd-file="$tmp" || result=$?
+    # Yazi writes a path without a trailing newline; read through EOF, keeping
+    # spaces, backslashes and embedded/trailing newlines in directory names.
+    IFS= read -r -d '' cwd < "$tmp" || builtin true
+    [ "$cwd" != "$PWD" ] && [ -d "$cwd" ] && builtin cd -- "$cwd" || builtin true
+    command rm -f -- "$tmp"
+    return "$result"
+}
+
 export SESSIONIZER_DIRS="${SESSIONIZER_DIRS:-$HOME/Projects:$HOME/services}"
 if command -v tmux >/dev/null 2>&1; then
     x() {
